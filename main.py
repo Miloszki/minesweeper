@@ -7,8 +7,6 @@ from collections import deque
 pygame.init()
 pygame.font.init()
 pygame.display.set_caption("Minesweeper")
-clock = pygame.time.Clock()
-
 TILE_CODES = {
     'hidden': 0,
     'shown': 1,
@@ -23,7 +21,7 @@ CLICKED_TILE_COLOR = (20,20,20)
 FLAGGED_TILE_COLOR = (200,200,0)
 NUM_ROWS = 15
 NUM_COLS = 15
-NUM_MINES = 25
+NUM_MINES = 10
 NUM_COLORS = {
     -1: (255, 192, 203),  # pink
     0: (255, 255, 255),  # white
@@ -104,15 +102,21 @@ def create_grid(rows,cols, mines):
     for mine in mine_indexes:
         neighbours = get_tile_neighbours(*mine, rows, cols)
         for r,c in neighbours:
-            # if grid[r][c] != TILE_CODES['bomb']:
-            grid[r][c] += 1
+            if grid[r][c] != TILE_CODES['bomb']:
+                grid[r][c] += 1
 
     return grid
 
 def draw(window, field, cover):
     
     window.fill(BG_COLOR)
+    flag = pygame.image.load(r"icons/flag.png").convert()
+    bomb= pygame.image.load(r"icons/bomb.png").convert()
+    bomb2= pygame.image.load(r"icons/bomb2.jpg").convert()
     
+    scaled_flag = pygame.transform.scale(flag,(SIZE,SIZE))
+    scaled_bomb = pygame.transform.scale(bomb,(SIZE,SIZE))
+    scaled_bomb2 = pygame.transform.scale(bomb2,(SIZE,SIZE))
     for i, row in enumerate(field):
         x= i*SIZE
         for j, val in enumerate(row):
@@ -128,6 +132,7 @@ def draw(window, field, cover):
                 continue
             elif is_flagged:
                 pygame.draw.rect(screen,FLAGGED_TILE_COLOR,rect)
+                window.blit(scaled_flag,(x,y))
                 pygame.draw.rect(screen,'black',rect,2)
                 continue
             else:
@@ -137,6 +142,8 @@ def draw(window, field, cover):
             if val != 0:
                 txt = FONT.render(str(val),2,NUM_COLORS[val])
                 window.blit(txt,(x + (SIZE/2 -txt.get_width()/2), y + (SIZE/2 - txt.get_height()/2)))
+            if val == -1:
+                window.blit(scaled_bomb2,(x,y))
 
     pygame.display.update()
 
@@ -151,7 +158,27 @@ def check_gameover(grid,cover):
                 pygame.display.update()
                 pygame.time.wait(2000)
                 main()
-                
+
+
+def check_win(grid,cover):
+
+    hidden_tiles = 0
+    flagged_tiles = 0
+
+    for i, row in enumerate(grid):
+        for j, val in enumerate(row):
+            if cover[i][j] == 0:
+               hidden_tiles += 1 
+            if cover[i][j] == 2:
+                flagged_tiles += 1
+
+    important_tiles = hidden_tiles + flagged_tiles
+    if important_tiles == NUM_MINES:
+        gameover_txt = GAMEOVER_FONT.render('YOU HAVE WON', 2, 'green')
+        screen.blit(gameover_txt, (width // 2 - gameover_txt.get_width() // 2, height // 2 - gameover_txt.get_height() // 2))
+        pygame.display.update()
+        pygame.time.wait(2000)
+        main()               
 
 def grid_bfs(pos, grid, visited_mask):
     """
@@ -214,6 +241,7 @@ def grid_bfs(pos, grid, visited_mask):
     flat_ll = [x for xs in ll for x in xs]
     return flat_ll
 
+
 def basic_middle_button(pos,grid, cover_grid):
     x,y = pos
     ca8_neighbours = []
@@ -253,6 +281,26 @@ def get_grid_pos(mouse_pos):
     col = my // SIZE
     return row,col
 
+def middle_click_fuctionality(row,col,grid,cover_grid):    
+
+    #algorytm sprawdzania czy wokol sa bomby etc.
+    visited_mask = [[0 for _ in range(NUM_COLS)] for _ in range(NUM_ROWS)]
+    list_neighbouring_empty_tiles = grid_bfs((row,col), grid, visited_mask)
+    for r,c in list_neighbouring_empty_tiles:
+        cover_grid[r][c] = 1
+
+    if grid[row][col] > 0:
+        neighbours = basic_middle_button((row,col),grid,cover_grid)
+        for r,c in neighbours:
+            cover_grid[r][c] = 1
+            #jezeli znajdzie tile z wartoscia 0 to przeprowadza szukanie pustych sasiadow bfs
+            if grid[r][c] == 0:
+                visited_mask = [[0 for _ in range(NUM_COLS)] for _ in range(NUM_ROWS)]
+                list_neighbouring_empty_tiles = grid_bfs((r,c), grid, visited_mask)
+                for r,c in list_neighbouring_empty_tiles:
+                    cover_grid[r][c] = 1
+
+
 def main():
     running = True
     grid = create_grid(NUM_ROWS, NUM_COLS, NUM_MINES)
@@ -262,10 +310,16 @@ def main():
         keys = pygame.key.get_pressed()
         draw(screen,grid, cover_grid)
         check_gameover(grid,cover_grid)
-
+        check_win(grid,cover_grid)
         for event in pygame.event.get():
-            if event.type == pygame.MOUSEBUTTONDOWN :
+            if keys[pygame.K_SPACE]:
+                row, col = get_grid_pos(pygame.mouse.get_pos())
+                if row >= NUM_ROWS or col >= NUM_COLS:
+                    continue
+                middle_click_fuctionality(row,col,grid,cover_grid)
 
+
+            if event.type == pygame.MOUSEBUTTONDOWN :
             #left click
                 if (event.button) == 1:
                     row, col = get_grid_pos(pygame.mouse.get_pos())
@@ -294,22 +348,7 @@ def main():
                     row, col = get_grid_pos(pygame.mouse.get_pos())
                     if row >= NUM_ROWS or col >= NUM_COLS:
                         continue
-                    #algorytm sprawdzania czy wokol sa bomby etc.
-                    visited_mask = [[0 for _ in range(NUM_COLS)] for _ in range(NUM_ROWS)]
-                    list_neighbouring_empty_tiles = grid_bfs((row,col), grid, visited_mask)
-                    for r,c in list_neighbouring_empty_tiles:
-                        cover_grid[r][c] = 1
-
-                    if grid[row][col] > 0:
-                        neighbours = basic_middle_button((row,col),grid,cover_grid)
-                        for r,c in neighbours:
-                            cover_grid[r][c] = 1
-                            #jezeli znajdzie tile z wartoscia 0 to przeprowadza szukanie pustych sasiadow bfs
-                            if grid[r][c] == 0:
-                                visited_mask = [[0 for _ in range(NUM_COLS)] for _ in range(NUM_ROWS)]
-                                list_neighbouring_empty_tiles = grid_bfs((r,c), grid, visited_mask)
-                                for r,c in list_neighbouring_empty_tiles:
-                                    cover_grid[r][c] = 1
+                    middle_click_fuctionality(row,col,grid,cover_grid)
 
 
 
