@@ -2,6 +2,7 @@
 import pygame
 import random
 from pprint import pprint
+from collections import deque 
 
 pygame.init()
 pygame.font.init()
@@ -80,7 +81,6 @@ def create_grid(rows,cols, mines):
             continue
 
         mine_indexes.add(pos)
-        print(pos)
         grid[row][col] = TILE_CODES['bomb']
 
     for mine in mine_indexes:
@@ -93,13 +93,6 @@ def create_grid(rows,cols, mines):
 
 def draw(window, field, cover):
     
-    #     for x in range(0, width, BLOCK_SIZE ):
-    #         for y in range(0, height, BLOCK_SIZE):
-    #             
-    #             tile_text = font.render(str(TILE_CODES['hidden']),False,TEXT_COLOR)
-    #             screen.blit(tile_text,(x + BLOCK_SIZE//2,y+ BLOCK_SIZE//2))
-
-
     window.fill(BG_COLOR)
     
     for i, row in enumerate(field):
@@ -130,6 +123,183 @@ def draw(window, field, cover):
     pygame.display.update()
 
 
+def find_empty_neighbours(init_pos, grid):
+    empty_neighbours = []
+    x,y = init_pos
+
+    
+    if x >0:
+        if grid[x-1][y] == 0:
+            empty_neighbours.append((x-1, y))
+    if x < (NUM_ROWS) - 1:
+        if grid[x+1][y] == 0:
+            empty_neighbours.append((x +1, y))
+
+    if y > 0:
+        if grid[x][y-1] == 0:
+            empty_neighbours.append((x,y-1))
+
+    if y < (NUM_COLS) - 1:
+        if grid[x][y+1] == 0:
+            empty_neighbours.append((x,y+1))
+
+    if x > 0 and y > 0:
+        if grid[x-1][y-1] == 0:
+            empty_neighbours.append((x-1,y-1))
+
+    if x > 0  and y < (NUM_COLS) - 1:
+        if grid[x-1][y+1] == 0:
+            empty_neighbours.append((x-1, y+1))
+
+    if x < (NUM_ROWS) -1 and y > 0:
+        if grid[x+1][y-1] == 0:
+            empty_neighbours.append((x+1, y-1))
+
+    if x < (NUM_ROWS) -1 and y < (NUM_COLS) - 1:
+        if grid[x+1][y+1] == 0:
+            empty_neighbours.append((x+1,y+1))
+
+    return empty_neighbours
+
+
+def recursive_find_empty_neighbours(pos,grid):
+    neighbours_next = [pos]
+    x,y = pos
+    if len(neighbours_next) == 0:
+        return empty_neighbours
+    if grid[x][y] == 0:
+        empty_neighbours = recursive_find_empty_neighbours('a',grid)
+    return empty_neighbours
+
+
+
+def grid_bfs(pos, grid, visited_mask):
+    q = deque()
+    ll=[]
+    x, y = pos
+
+    q.append((x, y))
+
+    while len(q) > 0:
+        cell = q.popleft()
+        x, y = cell
+
+        if x < 0 or y < 0 or x >= len(grid) or y >= len(grid[0]):
+            continue
+        if visited_mask[x][y]:
+            continue
+
+        visited_mask[x][y] = 1
+        #znajdz ciag pustych pol
+        if grid[x][y] == 0:
+            neighbors = []
+            if x + 1 < len(grid) and not visited_mask[x + 1][y]:
+                neighbors.append((x + 1, y))
+            if x - 1 >= 0 and not visited_mask[x - 1][y]:
+                neighbors.append((x - 1, y))
+            if y + 1 < len(grid[0]) and not visited_mask[x][y + 1]:
+                neighbors.append((x, y + 1))
+            if y - 1 >= 0 and not visited_mask[x][y - 1]:
+                neighbors.append((x, y - 1))
+
+            if x + 1 < len(grid) and y + 1 < len(grid[0]) and not visited_mask[x + 1][y + 1]:
+                neighbors.append((x+1, y + 1))
+            if x + 1 < len(grid) and y - 1 >= 0 and not visited_mask[x + 1][y - 1]:
+                neighbors.append((x+1, y - 1))
+            if x - 1 >= 0 and y + 1 < len(grid[0]) and not visited_mask[x - 1][y + 1]:
+                neighbors.append((x-1, y + 1))
+            if x - 1 >= 0 and y - 1 >= 0 and not visited_mask[x - 1][y - 1]:
+                neighbors.append((x-1, y - 1))
+
+
+            q.extend(neighbors)
+            ll.append(neighbors)
+
+        
+    flat_ll = [x for xs in ll for x in xs]
+    print(flat_ll)
+    return flat_ll
+
+def basic_middle_button(pos,grid, cover_grid, max_iter=8):
+    #jezeli jest flaga obok np 1 musi miec >= flag obok siebie zeby dzialalo
+    x,y = pos
+    ca8_neighbours = []
+    clicked_tile_val = grid[x][y]
+    print('value',clicked_tile_val)
+    # if x < 0 or y < 0 or x >= len(grid) or y >= len(grid[0]):
+    #         pass
+    flags_found = 0
+    #check if enough flags are selected nearby
+    if x > 0:
+        if cover_grid[x-1][y] == 2:
+            flags_found += 1
+
+    if x < (NUM_ROWS) - 1:        
+        if cover_grid[x+1][y] == 2:
+            flags_found += 1
+
+    if y > 0:
+        if cover_grid[x][y-1] == 2:
+            flags_found += 1
+
+    if y < (NUM_COLS) - 1:
+        if cover_grid[x][y+1] == 2:
+            flags_found += 1
+
+    if x > 0 and y > 0:
+        if cover_grid[x-1][y-1] == 2:
+            flags_found += 1
+
+    if x > 0 and y < NUM_COLS - 1:
+        if cover_grid[x-1][y+1] == 2:
+            flags_found += 1
+    if x < NUM_ROWS - 1 and y > 0:
+        if cover_grid[x+1][y-1] == 2: 
+            flags_found += 1
+
+    if x < NUM_ROWS- 1  and y < NUM_COLS -1:
+        if cover_grid[x+1][y+1] == 2:
+            flags_found += 1
+
+    if flags_found < clicked_tile_val:
+        return []
+
+
+
+    if x > 0:
+        if cover_grid[x-1][y] != 2 and grid[x-1][y] != -1 :
+            ca8_neighbours.append([x-1,y])
+    if x < (NUM_ROWS) - 1:
+        if cover_grid[x+1][y] != 2 and grid[x+1][y] != -1 :
+            ca8_neighbours.append([x +1, y])
+
+    if y > 0:
+        if cover_grid[x][y-1] != 2 :
+            ca8_neighbours.append([x,y-1])
+
+    if y < (NUM_COLS) - 1:
+        if cover_grid[x][y+1] != 2 :
+            ca8_neighbours.append([x,y+1])
+
+    if x > 0 and y > 0:
+        if cover_grid[x-1][y-1] != 2 :
+            ca8_neighbours.append([x-1,y-1])
+
+    if x > 0  and y < (NUM_COLS) - 1:
+        if cover_grid[x-1][y+1] != 2 :
+            ca8_neighbours.append([x-1, y+1])
+
+    if x < (NUM_ROWS) -1 and y > 0:
+        if cover_grid[x+1][y-1] != 2 :
+            ca8_neighbours.append([x+1, y-1])
+
+    if x < (NUM_ROWS) -1 and y < (NUM_COLS) - 1:
+        if cover_grid[x+1][y+1] != 2  :
+            ca8_neighbours.append([x+1,y+1])
+
+    flat_ca8_neighbours = [x for xs in ca8_neighbours for x in xs]
+    
+    return ca8_neighbours
 
 def get_grid_pos(mouse_pos):
     mx, my = mouse_pos
@@ -153,6 +323,11 @@ def main():
                     row, col = get_grid_pos(pygame.mouse.get_pos())
                     if row >= NUM_ROWS or col >= NUM_COLS:
                         continue
+                    if grid[row][col] == 0:
+                        visited_mask = [[0 for _ in range(NUM_COLS)] for _ in range(NUM_ROWS)]
+                        list_neighbouring_empty_tiles = grid_bfs((row,col), grid, visited_mask)
+                        for r,c in list_neighbouring_empty_tiles:
+                            cover_grid[r][c] = 1
                     #game over
                     if grid[row][col] == -1:
                         print('gameover')
@@ -160,8 +335,7 @@ def main():
                         screen.blit(gameover_txt, (width // 2 - gameover_txt.get_width() // 2, height // 2 - gameover_txt.get_height() // 2))
                         pygame.display.update()
                         #usprawnic zebyu mozna bylo zrestartowac gre
-                        pygame.time.wait(2000)
-   
+                        # pygame.time.wait(2000)
                     cover_grid[row][col] = 1
 
                 #right click - flagging
@@ -180,6 +354,16 @@ def main():
                     if row >= NUM_ROWS or col >= NUM_COLS:
                         continue
                     #algorytm sprawdzania czy wokol sa bomby etc.
+                    visited_mask = [[0 for _ in range(NUM_COLS)] for _ in range(NUM_ROWS)]
+                    list_neighbouring_empty_tiles = grid_bfs((row,col), grid, visited_mask)
+                    for r,c in list_neighbouring_empty_tiles:
+                        cover_grid[r][c] = 1
+
+                    if grid[row][col] > 0:
+                        neighbours = basic_middle_button((row,col),grid,cover_grid)
+                        for r,c in neighbours:
+                            cover_grid[r][c] = 1
+
 
             if event.type == pygame.QUIT or (keys[pygame.K_w] and keys[pygame.K_LCTRL]):
                 running = False
