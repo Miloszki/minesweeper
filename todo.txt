@@ -1,0 +1,3 @@
+ 
+mechanizm ktory bedzie gwarantowal ze rozpoczynajac nie klikniemy bomby
+

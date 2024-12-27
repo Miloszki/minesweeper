@@ -36,6 +36,10 @@ NUM_COLORS = {
     7: (0, 0, 0),        # black
     8: (128, 128, 128)
 }
+
+DROWS = [-1,0,1]
+DCOLS = DROWS.copy()
+
 SIZE = WINDOW_SIZE[0] // NUM_ROWS
 FONT = pygame.font.SysFont('Arial', 25)
 GAMEOVER_FONT = pygame.font.SysFont('Arial', 70)
@@ -43,15 +47,17 @@ screen = pygame.display.set_mode(WINDOW_SIZE)
 width, height = screen.get_size()
 
 def get_tile_neighbours(row,col,rows,cols): #change to for loop in the future?
-    neighbours = []
-
+    """
+    #legacy
     if row >0:
         neighbours.append((row-1, col))
+
     if row < (rows) - 1:
         neighbours.append((row +1, col))
 
     if col > 0:
         neighbours.append((row,col-1))
+
     if col < (cols) - 1:
         neighbours.append((row,col+1))
 
@@ -66,8 +72,20 @@ def get_tile_neighbours(row,col,rows,cols): #change to for loop in the future?
 
     if row < (rows) -1 and col < (cols) - 1:
         neighbours.append((row+1,col+1))
+    """
 
-    return neighbours    
+    neighbours = []
+
+    for drow_offset in DROWS:
+        for dcol_offset in DCOLS:
+            if drow_offset == 0 and dcol_offset == 0:
+                continue
+            drow = row + drow_offset
+            dcol = col + dcol_offset
+            if 0 <= drow < rows and 0 <= dcol < cols:
+                neighbours.append((drow, dcol))
+
+    return neighbours
 
 def create_grid(rows,cols, mines):
     grid = [[0 for _ in range(cols)] for  _ in range(rows)]
@@ -86,8 +104,8 @@ def create_grid(rows,cols, mines):
     for mine in mine_indexes:
         neighbours = get_tile_neighbours(*mine, rows, cols)
         for r,c in neighbours:
-            if grid[r][c] != TILE_CODES['bomb']:
-                grid[r][c] += 1
+            # if grid[r][c] != TILE_CODES['bomb']:
+            grid[r][c] += 1
 
     return grid
 
@@ -123,76 +141,20 @@ def draw(window, field, cover):
     pygame.display.update()
 
 
-def find_empty_neighbours(init_pos, grid):
-    empty_neighbours = []
-    x,y = init_pos
 
-    
-    if x >0:
-        if grid[x-1][y] == 0:
-            empty_neighbours.append((x-1, y))
-    if x < (NUM_ROWS) - 1:
-        if grid[x+1][y] == 0:
-            empty_neighbours.append((x +1, y))
-
-    if y > 0:
-        if grid[x][y-1] == 0:
-            empty_neighbours.append((x,y-1))
-
-    if y < (NUM_COLS) - 1:
-        if grid[x][y+1] == 0:
-            empty_neighbours.append((x,y+1))
-
-    if x > 0 and y > 0:
-        if grid[x-1][y-1] == 0:
-            empty_neighbours.append((x-1,y-1))
-
-    if x > 0  and y < (NUM_COLS) - 1:
-        if grid[x-1][y+1] == 0:
-            empty_neighbours.append((x-1, y+1))
-
-    if x < (NUM_ROWS) -1 and y > 0:
-        if grid[x+1][y-1] == 0:
-            empty_neighbours.append((x+1, y-1))
-
-    if x < (NUM_ROWS) -1 and y < (NUM_COLS) - 1:
-        if grid[x+1][y+1] == 0:
-            empty_neighbours.append((x+1,y+1))
-
-    return empty_neighbours
-
-
-def recursive_find_empty_neighbours(pos,grid):
-    neighbours_next = [pos]
-    x,y = pos
-    if len(neighbours_next) == 0:
-        return empty_neighbours
-    if grid[x][y] == 0:
-        empty_neighbours = recursive_find_empty_neighbours('a',grid)
-    return empty_neighbours
-
-
+def check_gameover(grid,cover):
+    for i, row in enumerate(grid):
+        for j, val in enumerate(row):
+            if cover[i][j] == 1 and val == -1:
+                gameover_txt = GAMEOVER_FONT.render('GAME OVER', 2, 'red')
+                screen.blit(gameover_txt, (width // 2 - gameover_txt.get_width() // 2, height // 2 - gameover_txt.get_height() // 2))
+                pygame.display.update()
+                pygame.time.wait(2000)
+                main()
+                
 
 def grid_bfs(pos, grid, visited_mask):
-    q = deque()
-    ll=[]
-    x, y = pos
-
-    q.append((x, y))
-
-    while len(q) > 0:
-        cell = q.popleft()
-        x, y = cell
-
-        if x < 0 or y < 0 or x >= len(grid) or y >= len(grid[0]):
-            continue
-        if visited_mask[x][y]:
-            continue
-
-        visited_mask[x][y] = 1
-        #znajdz ciag pustych pol
-        if grid[x][y] == 0:
-            neighbors = []
+    """
             if x + 1 < len(grid) and not visited_mask[x + 1][y]:
                 neighbors.append((x + 1, y))
             if x - 1 >= 0 and not visited_mask[x - 1][y]:
@@ -215,90 +177,74 @@ def grid_bfs(pos, grid, visited_mask):
             q.extend(neighbors)
             ll.append(neighbors)
 
-        
+        """
+    q = deque()
+    x, y = pos
+    ll=[]
+    ll.append([(x,y)])
+    q.append((x, y))
+
+    while len(q) > 0:
+        cell = q.popleft()
+        x, y = cell
+
+        if x < 0 or y < 0 or x >= len(grid) or y >= len(grid[0]):
+            continue
+        if visited_mask[x][y]:
+            continue
+
+        visited_mask[x][y] = 1
+        #znajdz ciag pustych pol
+        if grid[x][y] == 0:
+            neighbors = []
+
+            for drow_offset in DROWS:
+                for dcol_offset in DCOLS:
+                    if drow_offset == 0 and dcol_offset == 0:
+                        continue
+                    drow = x + drow_offset
+                    dcol = y + dcol_offset
+                    if 0 <= drow < NUM_ROWS and 0 <= dcol < NUM_COLS:
+                        if not visited_mask[drow][dcol]:
+                            neighbors.append((drow, dcol))
+
+            q.extend(neighbors)
+            ll.append(neighbors)
+
     flat_ll = [x for xs in ll for x in xs]
-    print(flat_ll)
     return flat_ll
 
-def basic_middle_button(pos,grid, cover_grid, max_iter=8):
-    #jezeli jest flaga obok np 1 musi miec >= flag obok siebie zeby dzialalo
+def basic_middle_button(pos,grid, cover_grid):
     x,y = pos
     ca8_neighbours = []
     clicked_tile_val = grid[x][y]
-    print('value',clicked_tile_val)
-    # if x < 0 or y < 0 or x >= len(grid) or y >= len(grid[0]):
-    #         pass
     flags_found = 0
+
     #check if enough flags are selected nearby
-    if x > 0:
-        if cover_grid[x-1][y] == 2:
-            flags_found += 1
-
-    if x < (NUM_ROWS) - 1:        
-        if cover_grid[x+1][y] == 2:
-            flags_found += 1
-
-    if y > 0:
-        if cover_grid[x][y-1] == 2:
-            flags_found += 1
-
-    if y < (NUM_COLS) - 1:
-        if cover_grid[x][y+1] == 2:
-            flags_found += 1
-
-    if x > 0 and y > 0:
-        if cover_grid[x-1][y-1] == 2:
-            flags_found += 1
-
-    if x > 0 and y < NUM_COLS - 1:
-        if cover_grid[x-1][y+1] == 2:
-            flags_found += 1
-    if x < NUM_ROWS - 1 and y > 0:
-        if cover_grid[x+1][y-1] == 2: 
-            flags_found += 1
-
-    if x < NUM_ROWS- 1  and y < NUM_COLS -1:
-        if cover_grid[x+1][y+1] == 2:
-            flags_found += 1
+    for drow_offset in DROWS:
+            for dcol_offset in DCOLS:
+                if drow_offset == 0 and dcol_offset == 0:
+                    continue
+                drow = x + drow_offset
+                dcol = y + dcol_offset
+                if 0 <= drow < NUM_ROWS and 0 <= dcol < NUM_COLS:
+                    if cover_grid[drow][dcol] == 2:
+                        flags_found += 1
 
     if flags_found < clicked_tile_val:
         return []
 
+    for drow_offset in DROWS:
+        for dcol_offset in DCOLS:
+            if drow_offset == 0 and dcol_offset == 0:
+                continue
+            drow = x + drow_offset
+            dcol = y + dcol_offset
+            if 0 <= drow < NUM_ROWS and 0 <= dcol < NUM_COLS:
+                if cover_grid[drow][dcol] != 2:
+                    ca8_neighbours.append((drow, dcol))
 
 
-    if x > 0:
-        if cover_grid[x-1][y] != 2 and grid[x-1][y] != -1 :
-            ca8_neighbours.append([x-1,y])
-    if x < (NUM_ROWS) - 1:
-        if cover_grid[x+1][y] != 2 and grid[x+1][y] != -1 :
-            ca8_neighbours.append([x +1, y])
-
-    if y > 0:
-        if cover_grid[x][y-1] != 2 :
-            ca8_neighbours.append([x,y-1])
-
-    if y < (NUM_COLS) - 1:
-        if cover_grid[x][y+1] != 2 :
-            ca8_neighbours.append([x,y+1])
-
-    if x > 0 and y > 0:
-        if cover_grid[x-1][y-1] != 2 :
-            ca8_neighbours.append([x-1,y-1])
-
-    if x > 0  and y < (NUM_COLS) - 1:
-        if cover_grid[x-1][y+1] != 2 :
-            ca8_neighbours.append([x-1, y+1])
-
-    if x < (NUM_ROWS) -1 and y > 0:
-        if cover_grid[x+1][y-1] != 2 :
-            ca8_neighbours.append([x+1, y-1])
-
-    if x < (NUM_ROWS) -1 and y < (NUM_COLS) - 1:
-        if cover_grid[x+1][y+1] != 2  :
-            ca8_neighbours.append([x+1,y+1])
-
-    flat_ca8_neighbours = [x for xs in ca8_neighbours for x in xs]
-    
     return ca8_neighbours
 
 def get_grid_pos(mouse_pos):
@@ -315,9 +261,11 @@ def main():
     while running:
         keys = pygame.key.get_pressed()
         draw(screen,grid, cover_grid)
+        check_gameover(grid,cover_grid)
 
         for event in pygame.event.get():
-            if event.type == pygame.MOUSEBUTTONDOWN:
+            if event.type == pygame.MOUSEBUTTONDOWN :
+
             #left click
                 if (event.button) == 1:
                     row, col = get_grid_pos(pygame.mouse.get_pos())
@@ -328,17 +276,10 @@ def main():
                         list_neighbouring_empty_tiles = grid_bfs((row,col), grid, visited_mask)
                         for r,c in list_neighbouring_empty_tiles:
                             cover_grid[r][c] = 1
-                    #game over
-                    if grid[row][col] == -1:
-                        print('gameover')
-                        gameover_txt = GAMEOVER_FONT.render('GAME OVER', 2, 'red')
-                        screen.blit(gameover_txt, (width // 2 - gameover_txt.get_width() // 2, height // 2 - gameover_txt.get_height() // 2))
-                        pygame.display.update()
-                        #usprawnic zebyu mozna bylo zrestartowac gre
-                        # pygame.time.wait(2000)
+
                     cover_grid[row][col] = 1
 
-                #right click - flagging
+            #right click - flagging
                 elif (event.button) == 3:
                     row, col = get_grid_pos(pygame.mouse.get_pos())
                     if cover_grid[row][col] == 0:
@@ -348,8 +289,8 @@ def main():
                     if row >= NUM_ROWS or col >= NUM_COLS:
                         continue
 
-                #middle click
-                if (event.button) == 2:
+            #middle click
+                elif (event.button) == 2 or keys[pygame.K_SPACE]:
                     row, col = get_grid_pos(pygame.mouse.get_pos())
                     if row >= NUM_ROWS or col >= NUM_COLS:
                         continue
@@ -363,13 +304,19 @@ def main():
                         neighbours = basic_middle_button((row,col),grid,cover_grid)
                         for r,c in neighbours:
                             cover_grid[r][c] = 1
+                            #jezeli znajdzie tile z wartoscia 0 to przeprowadza szukanie pustych sasiadow bfs
+                            if grid[r][c] == 0:
+                                visited_mask = [[0 for _ in range(NUM_COLS)] for _ in range(NUM_ROWS)]
+                                list_neighbouring_empty_tiles = grid_bfs((r,c), grid, visited_mask)
+                                for r,c in list_neighbouring_empty_tiles:
+                                    cover_grid[r][c] = 1
+
 
 
             if event.type == pygame.QUIT or (keys[pygame.K_w] and keys[pygame.K_LCTRL]):
                 running = False
 
         ####
-        clock.tick(60)
     
     pygame.quit()
 
