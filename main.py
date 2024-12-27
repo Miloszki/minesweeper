@@ -300,23 +300,35 @@ def middle_click_fuctionality(row,col,grid,cover_grid):
                 for r,c in list_neighbouring_empty_tiles:
                     cover_grid[r][c] = 1
 
+def right_click_functionality(x,y,cover):
+    if cover[x][y] == 0:
+        cover[x][y] = 2
+    elif cover[x][y] == 2:
+        cover[x][y] = 0
 
 def main():
     running = True
+    game_started = False
     grid = create_grid(NUM_ROWS, NUM_COLS, NUM_MINES)
     cover_grid = [[0 for _ in range(NUM_COLS)] for _ in range(NUM_ROWS)]
     
     while running:
         keys = pygame.key.get_pressed()
         draw(screen,grid, cover_grid)
-        check_gameover(grid,cover_grid)
-        check_win(grid,cover_grid)
+        if game_started:
+            check_gameover(grid,cover_grid)
+            check_win(grid,cover_grid)
         for event in pygame.event.get():
-            if keys[pygame.K_SPACE]:
-                row, col = get_grid_pos(pygame.mouse.get_pos())
-                if row >= NUM_ROWS or col >= NUM_COLS:
-                    continue
-                middle_click_fuctionality(row,col,grid,cover_grid)
+
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    row, col = get_grid_pos(pygame.mouse.get_pos())
+                    if row >= NUM_ROWS or col >= NUM_COLS:
+                        continue
+                    if cover_grid[row][col] == 0 or cover_grid[row][col] == 2:
+                        right_click_functionality(row,col,cover_grid)
+                    else:
+                        middle_click_fuctionality(row,col,grid,cover_grid)
 
 
             if event.type == pygame.MOUSEBUTTONDOWN :
@@ -336,12 +348,9 @@ def main():
             #right click - flagging
                 elif (event.button) == 3:
                     row, col = get_grid_pos(pygame.mouse.get_pos())
-                    if cover_grid[row][col] == 0:
-                        cover_grid[row][col] = 2
-                    elif cover_grid[row][col] == 2:
-                        cover_grid[row][col] = 0
                     if row >= NUM_ROWS or col >= NUM_COLS:
                         continue
+                    right_click_functionality(row,col,cover_grid)
 
             #middle click
                 elif (event.button) == 2 or keys[pygame.K_SPACE]:
