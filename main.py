@@ -1,4 +1,3 @@
- 
 import pygame
 import random
 from pprint import pprint
@@ -16,12 +15,12 @@ TILE_CODES = {
 TILE_COLOR = (100,100,100)
 TEXT_COLOR = (255,100,100)
 BG_COLOR = (0,0,0)
-WINDOW_SIZE = (800,800)
+WINDOW_SIZE = (600,600)
 CLICKED_TILE_COLOR = (20,20,20)
 FLAGGED_TILE_COLOR = (200,200,0)
 NUM_ROWS = 15
 NUM_COLS = 15
-NUM_MINES = 10
+NUM_MINES = 40
 NUM_COLORS = {
     -1: (255, 192, 203),  # pink
     0: (255, 255, 255),  # white
@@ -44,34 +43,7 @@ GAMEOVER_FONT = pygame.font.SysFont('Arial', 70)
 screen = pygame.display.set_mode(WINDOW_SIZE)
 width, height = screen.get_size()
 
-def get_tile_neighbours(row,col,rows,cols): #change to for loop in the future?
-    """
-    #legacy
-    if row >0:
-        neighbours.append((row-1, col))
-
-    if row < (rows) - 1:
-        neighbours.append((row +1, col))
-
-    if col > 0:
-        neighbours.append((row,col-1))
-
-    if col < (cols) - 1:
-        neighbours.append((row,col+1))
-
-    if row > 0 and col > 0:
-        neighbours.append((row-1,col-1))
-
-    if row > 0  and col < (cols) - 1:
-        neighbours.append((row-1, col+1))
-
-    if row < (rows) -1 and col > 0:
-        neighbours.append((row+1, col-1))
-
-    if row < (rows) -1 and col < (cols) - 1:
-        neighbours.append((row+1,col+1))
-    """
-
+def get_tile_neighbours(row,col,rows,cols):
     neighbours = []
 
     for drow_offset in DROWS:
@@ -85,14 +57,29 @@ def get_tile_neighbours(row,col,rows,cols): #change to for loop in the future?
 
     return neighbours
 
-def create_grid(rows,cols, mines):
+def create_safearea(start_pos):
+    safe_area = set()
+    for drow_offset in DROWS:
+        for dcol_offset in DCOLS:
+            drow = start_pos[0] + drow_offset
+            dcol = start_pos[1] + dcol_offset
+            if 0 <= drow < NUM_ROWS and 0 <= dcol < NUM_COLS:    
+                safe_area.add((drow, dcol))
+    return safe_area
+
+def create_grid(rows,cols, mines, start_pos, game_started=False):
     grid = [[0 for _ in range(cols)] for  _ in range(rows)]
 
     mine_indexes = set()
+    if not game_started:
+        safe_area = create_safearea(start_pos)
+
     while len(mine_indexes) < mines:
         row, col = random.randint(0,rows-1), random.randint(0,cols-1)
         pos = row, col
 
+        if (row,col) in safe_area:
+            continue
         if pos in mine_indexes:
             continue
 
@@ -108,7 +95,6 @@ def create_grid(rows,cols, mines):
     return grid
 
 def draw(window, field, cover):
-    
     window.fill(BG_COLOR)
     flag = pygame.image.load(r"icons/flag.png").convert()
     bomb= pygame.image.load(r"icons/bomb.png").convert()
@@ -147,8 +133,6 @@ def draw(window, field, cover):
 
     pygame.display.update()
 
-
-
 def check_gameover(grid,cover):
     for i, row in enumerate(grid):
         for j, val in enumerate(row):
@@ -159,9 +143,7 @@ def check_gameover(grid,cover):
                 pygame.time.wait(2000)
                 main()
 
-
 def check_win(grid,cover):
-
     hidden_tiles = 0
     flagged_tiles = 0
 
@@ -181,30 +163,6 @@ def check_win(grid,cover):
         main()               
 
 def grid_bfs(pos, grid, visited_mask):
-    """
-            if x + 1 < len(grid) and not visited_mask[x + 1][y]:
-                neighbors.append((x + 1, y))
-            if x - 1 >= 0 and not visited_mask[x - 1][y]:
-                neighbors.append((x - 1, y))
-            if y + 1 < len(grid[0]) and not visited_mask[x][y + 1]:
-                neighbors.append((x, y + 1))
-            if y - 1 >= 0 and not visited_mask[x][y - 1]:
-                neighbors.append((x, y - 1))
-
-            if x + 1 < len(grid) and y + 1 < len(grid[0]) and not visited_mask[x + 1][y + 1]:
-                neighbors.append((x+1, y + 1))
-            if x + 1 < len(grid) and y - 1 >= 0 and not visited_mask[x + 1][y - 1]:
-                neighbors.append((x+1, y - 1))
-            if x - 1 >= 0 and y + 1 < len(grid[0]) and not visited_mask[x - 1][y + 1]:
-                neighbors.append((x-1, y + 1))
-            if x - 1 >= 0 and y - 1 >= 0 and not visited_mask[x - 1][y - 1]:
-                neighbors.append((x-1, y - 1))
-
-
-            q.extend(neighbors)
-            ll.append(neighbors)
-
-        """
     q = deque()
     x, y = pos
     ll=[]
@@ -221,7 +179,6 @@ def grid_bfs(pos, grid, visited_mask):
             continue
 
         visited_mask[x][y] = 1
-        #znajdz ciag pustych pol
         if grid[x][y] == 0:
             neighbors = []
 
@@ -241,14 +198,12 @@ def grid_bfs(pos, grid, visited_mask):
     flat_ll = [x for xs in ll for x in xs]
     return flat_ll
 
-
 def basic_middle_button(pos,grid, cover_grid):
     x,y = pos
     ca8_neighbours = []
     clicked_tile_val = grid[x][y]
     flags_found = 0
 
-    #check if enough flags are selected nearby
     for drow_offset in DROWS:
             for dcol_offset in DCOLS:
                 if drow_offset == 0 and dcol_offset == 0:
@@ -272,7 +227,6 @@ def basic_middle_button(pos,grid, cover_grid):
                 if cover_grid[drow][dcol] != 2:
                     ca8_neighbours.append((drow, dcol))
 
-
     return ca8_neighbours
 
 def get_grid_pos(mouse_pos):
@@ -281,9 +235,7 @@ def get_grid_pos(mouse_pos):
     col = my // SIZE
     return row,col
 
-def middle_click_fuctionality(row,col,grid,cover_grid):    
-
-    #algorytm sprawdzania czy wokol sa bomby etc.
+def middle_click_functionality(row,col,grid,cover_grid):    
     visited_mask = [[0 for _ in range(NUM_COLS)] for _ in range(NUM_ROWS)]
     list_neighbouring_empty_tiles = grid_bfs((row,col), grid, visited_mask)
     for r,c in list_neighbouring_empty_tiles:
@@ -293,7 +245,6 @@ def middle_click_fuctionality(row,col,grid,cover_grid):
         neighbours = basic_middle_button((row,col),grid,cover_grid)
         for r,c in neighbours:
             cover_grid[r][c] = 1
-            #jezeli znajdzie tile z wartoscia 0 to przeprowadza szukanie pustych sasiadow bfs
             if grid[r][c] == 0:
                 visited_mask = [[0 for _ in range(NUM_COLS)] for _ in range(NUM_ROWS)]
                 list_neighbouring_empty_tiles = grid_bfs((r,c), grid, visited_mask)
@@ -309,16 +260,28 @@ def right_click_functionality(x,y,cover):
 def main():
     running = True
     game_started = False
-    grid = create_grid(NUM_ROWS, NUM_COLS, NUM_MINES)
     cover_grid = [[0 for _ in range(NUM_COLS)] for _ in range(NUM_ROWS)]
-    
+    grid = [[0 for _ in range(NUM_COLS)] for _ in range(NUM_ROWS)]
+
+    # Draw the initial grid
+    draw(screen, grid, cover_grid)
+
     while running:
         keys = pygame.key.get_pressed()
-        draw(screen,grid, cover_grid)
-        if game_started:
-            check_gameover(grid,cover_grid)
-            check_win(grid,cover_grid)
+
         for event in pygame.event.get():
+            if event.type == pygame.QUIT or (keys[pygame.K_w] and keys[pygame.K_LCTRL]):
+                running = False
+
+            if event.type == pygame.MOUSEBUTTONDOWN and not game_started:
+                if (event.button) == 1:
+                    row, col = get_grid_pos(pygame.mouse.get_pos())
+                    grid = create_grid(NUM_ROWS, NUM_COLS, NUM_MINES, start_pos=(row, col), game_started=game_started)
+                    game_started = True
+                    draw(screen, grid, cover_grid)  # Redraw the grid after creating it
+
+            if not game_started:
+                continue
 
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
@@ -326,49 +289,42 @@ def main():
                     if row >= NUM_ROWS or col >= NUM_COLS:
                         continue
                     if cover_grid[row][col] == 0 or cover_grid[row][col] == 2:
-                        right_click_functionality(row,col,cover_grid)
+                        right_click_functionality(row, col, cover_grid)
                     else:
-                        middle_click_fuctionality(row,col,grid,cover_grid)
+                        middle_click_functionality(row, col, grid, cover_grid)
 
-
-            if event.type == pygame.MOUSEBUTTONDOWN :
-            #left click
+            if event.type == pygame.MOUSEBUTTONDOWN:
                 if (event.button) == 1:
                     row, col = get_grid_pos(pygame.mouse.get_pos())
                     if row >= NUM_ROWS or col >= NUM_COLS:
                         continue
                     if grid[row][col] == 0:
                         visited_mask = [[0 for _ in range(NUM_COLS)] for _ in range(NUM_ROWS)]
-                        list_neighbouring_empty_tiles = grid_bfs((row,col), grid, visited_mask)
-                        for r,c in list_neighbouring_empty_tiles:
+                        list_neighbouring_empty_tiles = grid_bfs((row, col), grid, visited_mask)
+                        for r, c in list_neighbouring_empty_tiles:
                             cover_grid[r][c] = 1
 
                     cover_grid[row][col] = 1
 
-            #right click - flagging
                 elif (event.button) == 3:
                     row, col = get_grid_pos(pygame.mouse.get_pos())
                     if row >= NUM_ROWS or col >= NUM_COLS:
                         continue
-                    right_click_functionality(row,col,cover_grid)
+                    right_click_functionality(row, col, cover_grid)
 
-            #middle click
                 elif (event.button) == 2 or keys[pygame.K_SPACE]:
                     row, col = get_grid_pos(pygame.mouse.get_pos())
                     if row >= NUM_ROWS or col >= NUM_COLS:
                         continue
-                    middle_click_fuctionality(row,col,grid,cover_grid)
+                    middle_click_functionality(row, col, grid, cover_grid)
 
 
+        draw(screen, grid, cover_grid)  # Ensure the grid is redrawn after each event
+        if game_started:
+            check_gameover(grid, cover_grid)
+            check_win(grid, cover_grid)
 
-            if event.type == pygame.QUIT or (keys[pygame.K_w] and keys[pygame.K_LCTRL]):
-                running = False
-
-        ####
-    
     pygame.quit()
-
-
 
 if __name__ == "__main__":
     main()
