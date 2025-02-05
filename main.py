@@ -15,7 +15,7 @@ TILE_CODES = {
 TILE_COLOR = (100,100,100)
 TEXT_COLOR = (255,100,100)
 BG_COLOR = (0,0,0)
-WINDOW_SIZE = (600,600)
+WINDOW_SIZE = (1000,1000)
 CLICKED_TILE_COLOR = (20,20,20)
 FLAGGED_TILE_COLOR = (200,200,0)
 NUM_ROWS = 15
@@ -38,7 +38,7 @@ DROWS = [-1,0,1]
 DCOLS = DROWS.copy()
 
 SIZE = WINDOW_SIZE[0] // NUM_ROWS
-FONT = pygame.font.SysFont('Arial', 25)
+FONT = pygame.font.SysFont('Arial', int(WINDOW_SIZE[1]*25/600))
 GAMEOVER_FONT = pygame.font.SysFont('Arial', 70)
 screen = pygame.display.set_mode(WINDOW_SIZE)
 width, height = screen.get_size()
@@ -138,7 +138,7 @@ def check_gameover(grid,cover):
         for j, val in enumerate(row):
             if cover[i][j] == 1 and val == -1:
                 gameover_txt = GAMEOVER_FONT.render('GAME OVER', 2, 'red')
-                screen.blit(gameover_txt, (width // 2 - gameover_txt.get_width() // 2, height // 2 - gameover_txt.get_height() // 2))
+                screen.blit(gameover_txt, (width / 2 - gameover_txt.get_width() / 2, height / 2 - gameover_txt.get_height() / 2))
                 pygame.display.update()
                 pygame.time.wait(2000)
                 main()
