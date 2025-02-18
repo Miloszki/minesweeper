@@ -1,6 +1,5 @@
 import pygame
 import random
-from pprint import pprint
 from collections import deque 
 from buttons import Button
 
@@ -14,18 +13,12 @@ TILE_CODES = {
     'flag': 2
 }
 
+#NUMROWS, NUMCOLS, NUMMINES
 DIFFICULTY_LEVELS = {
     'Beginner': (9,9,10),
     'Intermediate': (16,16,40),
     'Expert': (21, 21, 90)
 }
-
-
-
-NUM_ROWS = DIFFICULTY_LEVELS['Intermediate'][0]
-NUM_COLS = DIFFICULTY_LEVELS['Intermediate'][1]
-NUM_MINES = DIFFICULTY_LEVELS['Intermediate'][2]
-
 
 
 TILE_COLOR = (100,100,100)
@@ -34,9 +27,6 @@ BG_COLOR = (0,0,0)
 WINDOW_SIZE = (1000,1000)
 CLICKED_TILE_COLOR = (20,20,20)
 FLAGGED_TILE_COLOR = (200,200,0)
-# NUM_ROWS = 15
-# NUM_COLS = 15
-# NUM_MINES = 40
 NUM_COLORS = {
     -1: (255, 192, 203),  # pink
     0: (255, 255, 255),  # white
@@ -49,24 +39,24 @@ NUM_COLORS = {
     7: (0, 0, 0),        # black
     8: (128, 128, 128)
 }
+
+#constants for looping over tile neighbors 
 DROWS = [-1,0,1]
 DCOLS = DROWS.copy()
-SIZE = WINDOW_SIZE[0] // NUM_ROWS
 
-FONT = pygame.font.SysFont('Arial', int(WINDOW_SIZE[1]*25/600))
+FONT = pygame.font.SysFont('Arial', int(WINDOW_SIZE[1]*25/600)) #scaling font for an original height of 600
 GAMEOVER_FONT = pygame.font.SysFont('Arial', 70)
 screen = pygame.display.set_mode(WINDOW_SIZE)
 width, height = screen.get_size()
 
 
 
-
-
 def draw_menu(window, diff):
-    beginner_button = Button(10, height/2 - SIZE/2, SIZE, 'Beginner')
-    intermediate_button = Button(10 + width/3, height/2 - SIZE/2, SIZE, 'Intermediate')
-    expert_button = Button(10 + width*2/3, height/2 - SIZE/2, SIZE, 'Expert')
-    start_game_button = Button(width/2, height*2/3, SIZE, 'Start game')
+    horizontal_offset = width * 0.1
+    beginner_button = Button(horizontal_offset, height/2 , 'Beginner')
+    intermediate_button = Button(horizontal_offset + width/3, height/2 , 'Intermediate')
+    expert_button = Button(horizontal_offset + width*2/3, height/2, 'Expert')
+    start_game_button = Button(width/2 , height*2/3, 'Start game')
 
     if diff is not None:
         if start_game_button.draw(window):
@@ -81,12 +71,11 @@ def draw_menu(window, diff):
     if expert_button.draw(window):
         diff = 'Expert'
 
-
     return diff, False
 
 
-def get_tile_neighbours(row,col,rows,cols):
-    neighbours = []
+def get_tile_neighbors(row,col,rows,cols):
+    neighbors = []
 
     for drow_offset in DROWS:
         for dcol_offset in DCOLS:
@@ -95,9 +84,9 @@ def get_tile_neighbours(row,col,rows,cols):
             drow = row + drow_offset
             dcol = col + dcol_offset
             if 0 <= drow < rows and 0 <= dcol < cols:
-                neighbours.append((drow, dcol))
+                neighbors.append((drow, dcol))
 
-    return neighbours
+    return neighbors
 
 def create_safearea(start_pos):
     safe_area = set()
@@ -129,8 +118,8 @@ def create_grid(rows,cols, mines, start_pos, game_started=False):
         grid[row][col] = TILE_CODES['bomb']
 
     for mine in mine_indexes:
-        neighbours = get_tile_neighbours(*mine, rows, cols)
-        for r,c in neighbours:
+        neighbors = get_tile_neighbors(*mine, rows, cols)
+        for r,c in neighbors:
             if grid[r][c] != TILE_CODES['bomb']:
                 grid[r][c] += 1
 
@@ -138,13 +127,11 @@ def create_grid(rows,cols, mines, start_pos, game_started=False):
 
 def draw(window, field, cover):
     window.fill(BG_COLOR)
-    flag = pygame.image.load(r"icons/flag.png").convert()
-    bomb= pygame.image.load(r"icons/bomb.png").convert()
-    bomb2= pygame.image.load(r"icons/bomb2.jpg").convert()
+    flag = pygame.image.load(r"icons/pixil_flag.png").convert()
+    bomb= pygame.image.load(r"icons/pixil_bomb.png").convert()
     
     scaled_flag = pygame.transform.scale(flag,(SIZE,SIZE))
     scaled_bomb = pygame.transform.scale(bomb,(SIZE,SIZE))
-    scaled_bomb2 = pygame.transform.scale(bomb2,(SIZE,SIZE))
     for i, row in enumerate(field):
         x= i*SIZE
         for j, val in enumerate(row):
@@ -171,7 +158,7 @@ def draw(window, field, cover):
                 txt = FONT.render(str(val),2,NUM_COLORS[val])
                 window.blit(txt,(x + (SIZE/2 -txt.get_width()/2), y + (SIZE/2 - txt.get_height()/2)))
             if val == -1:
-                window.blit(scaled_bomb2,(x,y))
+                window.blit(scaled_bomb,(x,y))
 
     pygame.display.update()
 
@@ -179,6 +166,13 @@ def check_gameover(grid,cover):
     for i, row in enumerate(grid):
         for j, val in enumerate(row):
             if cover[i][j] == 1 and val == -1:
+
+
+                for i, row in enumerate(grid):
+                    for j, val in enumerate(row):
+                        if val == -1:
+                            cover[i][j] = 1
+                draw(screen, grid, cover)
                 gameover_txt = GAMEOVER_FONT.render('GAME OVER', 2, 'red')
                 screen.blit(gameover_txt, (width / 2 - gameover_txt.get_width() / 2, height / 2 - gameover_txt.get_height() / 2))
                 pygame.display.update()
@@ -190,7 +184,7 @@ def check_win(grid,cover):
     flagged_tiles = 0
 
     for i, row in enumerate(grid):
-        for j, val in enumerate(row):
+        for j, _ in enumerate(row):
             if cover[i][j] == 0:
                hidden_tiles += 1 
             if cover[i][j] == 2:
@@ -242,19 +236,19 @@ def grid_bfs(pos, grid, visited_mask):
 
 def basic_middle_button(pos,grid, cover_grid):
     x,y = pos
-    ca8_neighbours = []
+    ca8_neighbors = []
     clicked_tile_val = grid[x][y]
     flags_found = 0
 
     for drow_offset in DROWS:
-            for dcol_offset in DCOLS:
-                if drow_offset == 0 and dcol_offset == 0:
-                    continue
-                drow = x + drow_offset
-                dcol = y + dcol_offset
-                if 0 <= drow < NUM_ROWS and 0 <= dcol < NUM_COLS:
-                    if cover_grid[drow][dcol] == 2:
-                        flags_found += 1
+        for dcol_offset in DCOLS:
+            if drow_offset == 0 and dcol_offset == 0:
+                continue
+            drow = x + drow_offset
+            dcol = y + dcol_offset
+            if 0 <= drow < NUM_ROWS and 0 <= dcol < NUM_COLS:
+                if cover_grid[drow][dcol] == 2:
+                    flags_found += 1
 
     if flags_found < clicked_tile_val:
         return []
@@ -267,9 +261,9 @@ def basic_middle_button(pos,grid, cover_grid):
             dcol = y + dcol_offset
             if 0 <= drow < NUM_ROWS and 0 <= dcol < NUM_COLS:
                 if cover_grid[drow][dcol] != 2:
-                    ca8_neighbours.append((drow, dcol))
+                    ca8_neighbors.append((drow, dcol))
 
-    return ca8_neighbours
+    return ca8_neighbors
 
 def get_grid_pos(mouse_pos):
     mx, my = mouse_pos
@@ -284,8 +278,8 @@ def middle_click_functionality(row,col,grid,cover_grid):
         cover_grid[r][c] = 1
 
     if grid[row][col] > 0:
-        neighbours = basic_middle_button((row,col),grid,cover_grid)
-        for r,c in neighbours:
+        neighbors = basic_middle_button((row,col),grid,cover_grid)
+        for r,c in neighbors:
             cover_grid[r][c] = 1
             if grid[r][c] == 0:
                 visited_mask = [[0 for _ in range(NUM_COLS)] for _ in range(NUM_ROWS)]
@@ -319,6 +313,7 @@ def main_menu():
         difficulty, game_started = draw_menu(screen,difficulty)
 
         if game_started:
+            initialize_game_constants(difficulty)
             main()
         pygame.display.update()
 
@@ -332,20 +327,12 @@ def main():
     draw(screen, grid, cover_grid)
 
     while running:
-        keys = pygame.key.get_pressed()
-        #wyswielt na ekranie liczbe min
+        try:
+            keys = pygame.key.get_pressed()
+        except pygame.error:
+            pass
 
-
-        # if diff is not None:
-            # NUM_ROWS = DIFFICULTY_LEVELS[diff][0]
-            # NUM_COLS = DIFFICULTY_LEVELS[diff][1]
-            # NUM_MINES = DIFFICULTY_LEVELS[diff][2]
-            # SIZE = WINDOW_SIZE[0] // NUM_ROWS
-
-            # game_started = False
-                
         
-
         for event in pygame.event.get():
             if event.type == pygame.QUIT or (keys[pygame.K_w] and keys[pygame.K_LCTRL]):
                 running = False
@@ -396,15 +383,12 @@ def main():
 
 
         if game_started:
-            draw(screen, grid, cover_grid)  # Ensure the grid is redrawn after each event
+            draw(screen, grid, cover_grid)  
             check_gameover(grid, cover_grid)
             check_win(grid, cover_grid)
 
     pygame.quit()
 
 if __name__ == "__main__":
-    # main()
     main_menu()
 
-
-    #https://github.com/russs123/pygame_tutorials/blob/main/Menu/main.py
