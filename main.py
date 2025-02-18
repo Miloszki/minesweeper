@@ -2,6 +2,7 @@ import pygame
 import random
 from pprint import pprint
 from collections import deque 
+from buttons import Button
 
 pygame.init()
 pygame.font.init()
@@ -12,15 +13,30 @@ TILE_CODES = {
     'bomb': -1,
     'flag': 2
 }
+
+DIFFICULTY_LEVELS = {
+    'Beginner': (9,9,10),
+    'Intermediate': (16,16,40),
+    'Expert': (21, 21, 90)
+}
+
+
+
+NUM_ROWS = DIFFICULTY_LEVELS['Intermediate'][0]
+NUM_COLS = DIFFICULTY_LEVELS['Intermediate'][1]
+NUM_MINES = DIFFICULTY_LEVELS['Intermediate'][2]
+
+
+
 TILE_COLOR = (100,100,100)
 TEXT_COLOR = (255,100,100)
 BG_COLOR = (0,0,0)
 WINDOW_SIZE = (1000,1000)
 CLICKED_TILE_COLOR = (20,20,20)
 FLAGGED_TILE_COLOR = (200,200,0)
-NUM_ROWS = 15
-NUM_COLS = 15
-NUM_MINES = 40
+# NUM_ROWS = 15
+# NUM_COLS = 15
+# NUM_MINES = 40
 NUM_COLORS = {
     -1: (255, 192, 203),  # pink
     0: (255, 255, 255),  # white
@@ -33,15 +49,41 @@ NUM_COLORS = {
     7: (0, 0, 0),        # black
     8: (128, 128, 128)
 }
-
 DROWS = [-1,0,1]
 DCOLS = DROWS.copy()
-
 SIZE = WINDOW_SIZE[0] // NUM_ROWS
+
 FONT = pygame.font.SysFont('Arial', int(WINDOW_SIZE[1]*25/600))
 GAMEOVER_FONT = pygame.font.SysFont('Arial', 70)
 screen = pygame.display.set_mode(WINDOW_SIZE)
 width, height = screen.get_size()
+
+
+
+
+
+def draw_menu(window, diff):
+    beginner_button = Button(10, height/2 - SIZE/2, SIZE, 'Beginner')
+    intermediate_button = Button(10 + width/3, height/2 - SIZE/2, SIZE, 'Intermediate')
+    expert_button = Button(10 + width*2/3, height/2 - SIZE/2, SIZE, 'Expert')
+    start_game_button = Button(width/2, height*2/3, SIZE, 'Start game')
+
+    if diff is not None:
+        if start_game_button.draw(window):
+            return diff, True
+        
+    if beginner_button.draw(window):
+        diff = 'Beginner'
+
+    if intermediate_button.draw(window):
+        diff = 'Intermediate'
+
+    if expert_button.draw(window):
+        diff = 'Expert'
+
+
+    return diff, False
+
 
 def get_tile_neighbours(row,col,rows,cols):
     neighbours = []
@@ -257,17 +299,52 @@ def right_click_functionality(x,y,cover):
     elif cover[x][y] == 2:
         cover[x][y] = 0
 
+def initialize_game_constants(chosen_difficulty):
+    global NUM_ROWS, NUM_COLS, NUM_MINES, SIZE
+
+    NUM_ROWS = DIFFICULTY_LEVELS[chosen_difficulty][0]
+    NUM_COLS = DIFFICULTY_LEVELS[chosen_difficulty][1]
+    NUM_MINES = DIFFICULTY_LEVELS[chosen_difficulty][2]
+    SIZE = WINDOW_SIZE[0] // NUM_ROWS
+
+def main_menu():
+    running = True
+    difficulty = None
+    while running:
+        keys = pygame.key.get_pressed()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT or (keys[pygame.K_w] and keys[pygame.K_LCTRL]):
+                running = False
+        difficulty, game_started = draw_menu(screen,difficulty)
+
+        if game_started:
+            main()
+        pygame.display.update()
+
+
 def main():
     running = True
-    game_started = False
+    game_started = None
     cover_grid = [[0 for _ in range(NUM_COLS)] for _ in range(NUM_ROWS)]
     grid = [[0 for _ in range(NUM_COLS)] for _ in range(NUM_ROWS)]
-
     # Draw the initial grid
     draw(screen, grid, cover_grid)
 
     while running:
         keys = pygame.key.get_pressed()
+        #wyswielt na ekranie liczbe min
+
+
+        # if diff is not None:
+            # NUM_ROWS = DIFFICULTY_LEVELS[diff][0]
+            # NUM_COLS = DIFFICULTY_LEVELS[diff][1]
+            # NUM_MINES = DIFFICULTY_LEVELS[diff][2]
+            # SIZE = WINDOW_SIZE[0] // NUM_ROWS
+
+            # game_started = False
+                
+        
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT or (keys[pygame.K_w] and keys[pygame.K_LCTRL]):
@@ -275,13 +352,12 @@ def main():
 
             if event.type == pygame.MOUSEBUTTONDOWN and not game_started:
                 if (event.button) == 1:
+                    cover_grid = [[0 for _ in range(NUM_COLS)] for _ in range(NUM_ROWS)]
+
                     row, col = get_grid_pos(pygame.mouse.get_pos())
                     grid = create_grid(NUM_ROWS, NUM_COLS, NUM_MINES, start_pos=(row, col), game_started=game_started)
                     game_started = True
                     draw(screen, grid, cover_grid)  # Redraw the grid after creating it
-
-            if not game_started:
-                continue
 
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
@@ -319,12 +395,16 @@ def main():
                     middle_click_functionality(row, col, grid, cover_grid)
 
 
-        draw(screen, grid, cover_grid)  # Ensure the grid is redrawn after each event
         if game_started:
+            draw(screen, grid, cover_grid)  # Ensure the grid is redrawn after each event
             check_gameover(grid, cover_grid)
             check_win(grid, cover_grid)
 
     pygame.quit()
 
 if __name__ == "__main__":
-    main()
+    # main()
+    main_menu()
+
+
+    #https://github.com/russs123/pygame_tutorials/blob/main/Menu/main.py
