@@ -1,5 +1,0 @@
- 
-mechanizm ktory bedzie gwarantowal ze rozpoczynajac nie klikniemy bomby
-
-dodac animacje: wszystkie bomby eksploduja po gameover
-dodac licznik bomb, czas gry
