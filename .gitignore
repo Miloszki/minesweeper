@@ -2,5 +2,4 @@
 .env/
 test.py
 test2.py
-icons/
 __pycache__/
